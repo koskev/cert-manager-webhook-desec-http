@@ -1,5 +1,11 @@
 [![Build](https://github.com/irreleph4nt/cert-manager-webhook-desec-http/actions/workflows/publish.yml/badge.svg)](https://github.com/irreleph4nt/cert-manager-webhook-desec-http/actions/workflows/publish.yml)
 
+# Changes in this fork
+
+ - Minimal OCI-Image
+ - Updated dependencies
+ - Unprivileged port
+
 # ACME webhook for deSEC DNS API (http client version)
 Usage:
 ```bash

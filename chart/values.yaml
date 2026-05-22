@@ -13,7 +13,7 @@ certManager:
   namespace: cert-manager
 
 image:
-  repository: ghcr.io/irreleph4nt/cert-manager-webhook-desec-http
+  repository: ghcr.io/koskev/cert-manager-webhook-desec-http
   tag: ""
   pullPolicy: IfNotPresent
 
@@ -25,6 +25,7 @@ fullnameOverride: ""
 service:
   type: ClusterIP
   port: 443
+  targetPort: 8443
 
 secretName:
 - cert-manager-desec-http-secret
