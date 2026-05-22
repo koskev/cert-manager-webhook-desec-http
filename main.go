@@ -15,19 +15,21 @@ import (
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/apis/acme/v1alpha1"
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/cmd"
 	"github.com/cert-manager/cert-manager/pkg/issuer/acme/dns/util"
-	"github.com/hashicorp/go-retryablehttp"
 	"github.com/go-logr/zapr"
+	"github.com/hashicorp/go-retryablehttp"
 	"go.uber.org/zap"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	extapi "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var GroupName = os.Getenv("GROUP_NAME")
-var logger = zap.Must(zap.NewProduction())
-var zapLogger = zapr.NewLogger(logger)
+var (
+	GroupName = os.Getenv("GROUP_NAME")
+	logger    = zap.Must(zap.NewProduction())
+	zapLogger = zapr.NewLogger(logger)
+)
 
 func main() {
 	if GroupName == "" {
@@ -126,7 +128,7 @@ func addTxtRecord(config Config, ch *v1alpha1.ChallengeRequest) {
 				PUT: Update RRSet TXT records with new array
 
 	*/
-	
+
 	var url string
 	var content string
 	var contentArr []string
@@ -148,7 +150,7 @@ func addTxtRecord(config Config, ch *v1alpha1.ChallengeRequest) {
 	// no TXT record exists (GET returned 404), so we will create one
 	if records == nil && err == nil {
 		slogger.Infof("====== getTxtRecords: 404 (no TXT found, now creating) ======")
-		
+
 		content = "\\\"" + ch.Key + "\\\""
 		httpMethod = "POST"
 		url = fmt.Sprintf("%s/domains/%s/rrsets/", config.ApiUrl, config.DomainName)
@@ -157,10 +159,10 @@ func addTxtRecord(config Config, ch *v1alpha1.ChallengeRequest) {
 	// at least one TXT record exists (GET returned 200), so we will append our key as a new record
 	if records != nil && err == nil {
 		slogger.Infof("====== getTxtRecords: 200 (TXT record found, now updating) ======")
-		
+
 		// deSEC returns TXT values quoted, so we have to remove leading and trailing double-quotes for each value one at a time
 		for _, x := range records.Records {
-			contentArr = append(contentArr, strings.Trim(x,"\""))
+			contentArr = append(contentArr, strings.Trim(x, "\""))
 		}
 
 		contentArr = append(contentArr, ch.Key)
@@ -170,7 +172,7 @@ func addTxtRecord(config Config, ch *v1alpha1.ChallengeRequest) {
 		url = fmt.Sprintf("%s/domains/%s/rrsets/%s.../TXT/", config.ApiUrl, config.DomainName, subName)
 	}
 
-	var jsonStr = fmt.Sprintf(`
+	jsonStr := fmt.Sprintf(`
 		{
 			"subname": "%s",
 			"type": "TXT",
@@ -199,7 +201,7 @@ func removeTxtRecord(config Config, ch *v1alpha1.ChallengeRequest) {
 				Array is now empty?
 				Yes
 					DELETE: subname RRSet
-				No 
+				No
 					PUT: Update RRSet TXT records with new array
 
 	*/
@@ -225,7 +227,7 @@ func removeTxtRecord(config Config, ch *v1alpha1.ChallengeRequest) {
 	// no TXT record exists (GET returned 404), so we silently skip execution (nothing to do)
 	if records == nil && err == nil {
 		slogger.Infof("====== getTxtRecords: 404 (no TXT found, skipping) ======")
-		
+
 		content = ""
 		httpMethod = ""
 		url = ""
@@ -237,14 +239,14 @@ func removeTxtRecord(config Config, ch *v1alpha1.ChallengeRequest) {
 
 		// deSEC returns TXT values quoted, so we have to remove leading and trailing double-quotes for each value one at a time
 		for _, x := range records.Records {
-			contentArr = append(contentArr, strings.Trim(x,"\""))
+			contentArr = append(contentArr, strings.Trim(x, "\""))
 		}
 
 		var contentArrAmend []string
 		// Create a new records slice containing all records except for the one to be deleted
 		for _, r := range contentArr {
 			if r != ch.Key {
-				contentArrAmend  = append(contentArrAmend , r)
+				contentArrAmend = append(contentArrAmend, r)
 			}
 		}
 
@@ -270,7 +272,7 @@ func removeTxtRecord(config Config, ch *v1alpha1.ChallengeRequest) {
 
 	if (httpMethod != "") && (url != "") {
 
-		var jsonStr = fmt.Sprintf(`
+		jsonStr := fmt.Sprintf(`
 		{
 			"subname": "%s",
 			"type": "TXT",
@@ -288,7 +290,6 @@ func removeTxtRecord(config Config, ch *v1alpha1.ChallengeRequest) {
 		slogger.Infof("Removed TXT record result: %s", string(remove))
 
 	}
-
 }
 
 // Config ------------------------------------------------------
@@ -388,7 +389,7 @@ func callDnsApi(url string, method string, body io.Reader, config Config) ([]byt
 	} else {
 		statusOK = resp.StatusCode >= 200 && resp.StatusCode < 300
 	}
-	
+
 	if statusOK {
 		return respBody, resp.StatusCode, nil
 	}
@@ -405,21 +406,21 @@ func getTxtRecords(config Config, ch *v1alpha1.ChallengeRequest) (*RRSet, error)
 	// Get the subdomain portion of fqdn
 	fqdn := util.UnFqdn(ch.ResolvedFQDN)
 	subName := fqdn[:len(fqdn)-len(config.DomainName)-1]
-	
+
 	url := fmt.Sprintf("%s/domains/%s/rrsets/%s.../TXT/", config.ApiUrl, config.DomainName, subName)
 
-	var jsonStr = fmt.Sprintf(`{}`)
+	jsonStr := fmt.Sprintf(`{}`)
 
 	get, statusCode, err := callDnsApi(url, "GET", bytes.NewBuffer([]byte(jsonStr)), config)
 	if err != nil {
 		return nil, fmt.Errorf("callDnsApi failed: %w", err)
 	}
-	
+
 	var rrset RRSet
 
 	if statusCode == 200 {
-		
- 		err := json.Unmarshal(get, &rrset)
+
+		err := json.Unmarshal(get, &rrset)
 		if err == nil {
 			return &rrset, nil
 		}
@@ -432,5 +433,4 @@ func getTxtRecords(config Config, ch *v1alpha1.ChallengeRequest) (*RRSet, error)
 	text := "Error in getTxtRecords:" + fmt.Sprint(statusCode) + " url: " + url + "body: " + string(get)
 	slogger.Error(text)
 	return nil, errors.New(text)
-
 }
